@@ -17,42 +17,28 @@ class ChatInput extends StatefulWidget {
   _ChatInputState createState() => _ChatInputState();
 }
 
-class _ChatInputState extends State<ChatInput> with SingleTickerProviderStateMixin {
+class _ChatInputState extends State<ChatInput>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _controller = TextEditingController();
   late AnimationController _animationController;
-  late Animation<double> _animation;
   bool _isRecording = false;
-  bool _showVoiceRecordButton = false;
   bool _showAttachmentOptions = false;
 
   @override
   void initState() {
     super.initState();
-    
+
     _controller.addListener(_onTextChanged);
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
-    _animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
   }
 
   void _onTextChanged() {
-    // Show/hide voice button based on text input
-    final shouldShowVoice = _controller.text.isEmpty;
-    if (_showVoiceRecordButton != shouldShowVoice) {
-      setState(() {
-        _showVoiceRecordButton = shouldShowVoice;
-      });
-    }
-    
-    // Notify parent about typing status
     widget.onTyping(_controller.text.isNotEmpty);
+    setState(() {}); // triggers send button animation
   }
 
   void _handleSend() {
@@ -67,7 +53,7 @@ class _ChatInputState extends State<ChatInput> with SingleTickerProviderStateMix
     setState(() {
       _showAttachmentOptions = !_showAttachmentOptions;
     });
-    
+
     if (_showAttachmentOptions) {
       _animationController.forward();
     } else {
@@ -79,7 +65,7 @@ class _ChatInputState extends State<ChatInput> with SingleTickerProviderStateMix
     setState(() {
       _isRecording = !_isRecording;
     });
-    
+
     if (!_isRecording) {
       // Mock sending a voice message
       widget.onSend('[Voice Message]');
@@ -93,204 +79,249 @@ class _ChatInputState extends State<ChatInput> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  bool get _showSendButton => _controller.text.trim().isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Attachment options
-        SizeTransition(
-          sizeFactor: _animation,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            color: Colors.white,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAttachmentButton(Icons.image, 'Image', Colors.purple),
-                _buildAttachmentButton(Icons.camera_alt, 'Camera', Colors.red),
-                _buildAttachmentButton(Icons.mic, 'Voice', Colors.orange),
-                _buildAttachmentButton(Icons.emoji_emotions, 'Emoji', Colors.amber),
-              ],
+    final floatingSend = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      transitionBuilder: (child, animation) =>
+          ScaleTransition(scale: animation, child: child),
+      child: _showSendButton
+          ? FloatingActionButton(
+              key: const ValueKey('send'),
+              heroTag: 'chatSend',
+              mini: true,
+              backgroundColor: AppTheme.primaryColor,
+              elevation: 2,
+              onPressed: widget.enabled ? _handleSend : null,
+              child: const Icon(Icons.send, color: Colors.white),
+            )
+          : FloatingActionButton(
+              key: const ValueKey('mic'),
+              heroTag: 'chatMic',
+              mini: true,
+              backgroundColor: AppTheme.primaryColor.withOpacity(0.85),
+              elevation: 2,
+              onPressed: widget.enabled ? _toggleVoiceRecording : null,
+              child: _isRecording
+                  ? AnimatedPulse(
+                      child: const Icon(Icons.mic, color: Colors.redAccent),
+                    )
+                  : const Icon(Icons.mic, color: Colors.white),
+            ),
+    );
+
+    return SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Animated attachment row
+          SizeTransition(
+            sizeFactor: _animationController,
+            axisAlignment: -1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, -1),
+                  ),
+                ],
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(18)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildAttachmentButton(
+                      Icons.image_rounded, 'Image', Colors.purple),
+                  _buildAttachmentButton(
+                      Icons.camera_alt_rounded, 'Camera', Colors.red),
+                  _buildAttachmentButton(
+                      Icons.insert_drive_file_rounded, 'File', Colors.blue),
+                  _buildAttachmentButton(
+                      Icons.emoji_emotions_rounded, 'Emoji', Colors.amber),
+                ],
+              ),
             ),
           ),
-        ),
-        
-        // Main input bar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 5,
-                offset: const Offset(0, -1),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Attachment button
-              IconButton(
-                icon: Icon(
-                  _showAttachmentOptions
-                      ? Icons.close
-                      : Icons.add_circle_outline,
-                  color: _showAttachmentOptions
-                      ? AppTheme.error
-                      : AppTheme.textLightSecondary,
-                ),
-                onPressed: widget.enabled ? _toggleAttachmentOptions : null,
-              ),
-              
-              // Text input field
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: widget.enabled
-                        ? Colors.grey.shade100
-                        : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: TextField(
-                            controller: _controller,
-                            decoration: InputDecoration(
-                              hintText: widget.enabled
-                                  ? 'Type a message...'
-                                  : 'Connecting to chat...',
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                              isDense: true,
-                            ),
-                            enabled: widget.enabled,
-                            keyboardType: TextInputType.multiline,
-                            maxLines: null,
-                            textCapitalization: TextCapitalization.sentences,
-                          ),
-                        ),
+
+          // Input bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+            child: Material(
+              elevation: 2,
+              borderRadius: BorderRadius.circular(26),
+              color: Colors.white,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                child: Row(
+                  children: [
+                    // Attachment toggle
+                    IconButton(
+                      icon: Icon(
+                        _showAttachmentOptions ? Icons.close : Icons.add,
+                        color: _showAttachmentOptions
+                            ? AppTheme.error
+                            : AppTheme.textLightSecondary,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: IconButton(
-                          icon: const Icon(Icons.emoji_emotions_outlined),
-                          color: AppTheme.textLightSecondary,
-                          onPressed: widget.enabled
-                              ? () {
-                                  // Show emoji picker (not implemented for demo)
-                                }
-                              : null,
+                      splashRadius: 24,
+                      onPressed:
+                          widget.enabled ? _toggleAttachmentOptions : null,
+                    ),
+                    // Text input
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: InputDecoration(
+                          hintText: widget.enabled
+                              ? 'Type a message...'
+                              : 'Connecting to chat...',
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 8),
                         ),
+                        enabled: widget.enabled && !_isRecording,
+                        keyboardType: TextInputType.multiline,
+                        maxLines: null,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: const TextStyle(fontSize: 16),
                       ),
-                    ],
-                  ),
+                    ),
+                    // Emoji shortcut (optional, can be expanded with picker)
+                    IconButton(
+                      icon: const Icon(Icons.emoji_emotions_outlined),
+                      color: AppTheme.textLightSecondary,
+                      splashRadius: 24,
+                      onPressed: widget.enabled
+                          ? () {
+                              // Future: show emoji picker
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Emoji picker coming soon!'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          : null,
+                    ),
+                    // Animated floating send/mic
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, right: 2),
+                      child: floatingSend,
+                    ),
+                  ],
                 ),
               ),
-              
-              const SizedBox(width: 8),
-              
-              // Send or voice record button
-              _isRecording
-                  ? _buildRecordingButton()
-                  : _showVoiceRecordButton
-                      ? IconButton(
-                          icon: const Icon(Icons.mic),
-                          color: AppTheme.primaryColor,
-                          onPressed: widget.enabled
-                              ? _toggleVoiceRecording
-                              : null,
-                        )
-                      : IconButton(
-                          icon: const Icon(Icons.send),
-                          color: AppTheme.primaryColor,
-                          onPressed: widget.enabled
-                              ? _handleSend
-                              : null,
-                        ),
-            ],
+            ),
           ),
-        ),
-      ],
+          if (_isRecording)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _buildRecordingButton(),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildAttachmentButton(IconData icon, String label, Color color) {
     return InkWell(
-      onTap: () {
-        _toggleAttachmentOptions();
-        // Mock the action (not implemented for demo)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label feature coming soon!'),
-            duration: const Duration(seconds: 1),
+      borderRadius: BorderRadius.circular(16),
+      onTap: widget.enabled
+          ? () {
+              _toggleAttachmentOptions();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$label feature coming soon!'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            }
+          : null,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.13),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, color: color, size: 24),
           ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color,
-              ),
-            ),
-          ],
-        ),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: color)),
+        ],
       ),
     );
   }
 
   Widget _buildRecordingButton() {
-    return GestureDetector(
-      onTap: _toggleVoiceRecording,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(20),
+    return AnimatedPulse(
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.redAccent,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          elevation: 6,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(
-              Icons.stop,
-              color: Colors.white,
-              size: 20,
-            ),
-            SizedBox(width: 4),
-            Text(
-              'Stop',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ],
+        icon: const Icon(Icons.stop_rounded),
+        label: const Text('Stop Recording'),
+        onPressed: _toggleVoiceRecording,
+      ),
+    );
+  }
+}
+
+class AnimatedPulse extends StatefulWidget {
+  final Widget child;
+  const AnimatedPulse({required this.child, Key? key}) : super(key: key);
+
+  @override
+  State<AnimatedPulse> createState() => _AnimatedPulseState();
+}
+
+class _AnimatedPulseState extends State<AnimatedPulse>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  @override
+  void initState() {
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Transform.scale(
+        scale: 1 + (_controller.value * 0.08),
+        child: Opacity(
+          opacity: 0.85 + (_controller.value * 0.15),
+          child: child,
         ),
       ),
+      child: widget.child,
     );
   }
 }

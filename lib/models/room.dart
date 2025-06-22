@@ -1,15 +1,6 @@
-enum RoomStatus {
-  active,
-  inactive,
-  archived,
-}
+enum RoomStatus { active, inactive, archived }
 
-enum ParticipantTier {
-  captain,
-  moderator,
-  member,
-  guest,
-}
+enum ParticipantTier { captain, permanentSpeaker, guestSpeaker, member }
 
 class Participant {
   final String userId;
@@ -28,14 +19,14 @@ class Participant {
 
   factory Participant.fromJson(Map<String, dynamic> json) {
     return Participant(
-      userId: json['user_id'],
-      username: json['username'],
-      profileImageUrl: json['profile_image_url'],
+      userId: json['user_id'] as String,
+      username: json['username'] as String,
+      profileImageUrl: json['profile_image_url'] as String?,
       tier: ParticipantTier.values.firstWhere(
-        (e) => e.toString().split('.').last.toLowerCase() == json['tier'].toLowerCase(),
-        orElse: () => ParticipantTier.guest,
+        (e) => e.name.toLowerCase() == (json['tier'] as String?)?.toLowerCase(),
+        orElse: () => ParticipantTier.member,
       ),
-      joinedAt: DateTime.parse(json['joined_at']),
+      joinedAt: DateTime.parse(json['joined_at'] as String),
     );
   }
 
@@ -44,9 +35,25 @@ class Participant {
       'user_id': userId,
       'username': username,
       'profile_image_url': profileImageUrl,
-      'tier': tier.toString().split('.').last.toLowerCase(),
+      'tier': tier.name,
       'joined_at': joinedAt.toIso8601String(),
     };
+  }
+
+  Participant copyWith({
+    String? userId,
+    String? username,
+    String? profileImageUrl,
+    ParticipantTier? tier,
+    DateTime? joinedAt,
+  }) {
+    return Participant(
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      tier: tier ?? this.tier,
+      joinedAt: joinedAt ?? this.joinedAt,
+    );
   }
 }
 
@@ -83,27 +90,28 @@ class Room {
 
   factory Room.fromJson(Map<String, dynamic> json) {
     return Room(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      eventId: json['event_id'],
-      captainId: json['captain_id'],
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      eventId: json['event_id'] as String,
+      captainId: json['captain_id'] as String,
       status: RoomStatus.values.firstWhere(
-        (e) => e.toString().split('.').last.toLowerCase() == json['status'].toLowerCase(),
+        (e) =>
+            e.name.toLowerCase() == (json['status'] as String?)?.toLowerCase(),
         orElse: () => RoomStatus.inactive,
       ),
       participants: (json['participants'] as List<dynamic>?)
-          ?.map((p) => Participant.fromJson(p))
-          .toList() ??
+              ?.map((p) => Participant.fromJson(p as Map<String, dynamic>))
+              .toList() ??
           [],
-      messageCount: json['message_count'] ?? 0,
+      messageCount: json['message_count'] as int? ?? 0,
       lastActivityAt: json['last_activity_at'] != null
-          ? DateTime.parse(json['last_activity_at'])
+          ? DateTime.parse(json['last_activity_at'] as String)
           : null,
-      parentRoomId: json['parent_room_id'],
-      recordingUrl: json['recording_url'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      parentRoomId: json['parent_room_id'] as String?,
+      recordingUrl: json['recording_url'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
@@ -114,7 +122,7 @@ class Room {
       'description': description,
       'event_id': eventId,
       'captain_id': captainId,
-      'status': status.toString().split('.').last.toLowerCase(),
+      'status': status.name,
       'participants': participants.map((p) => p.toJson()).toList(),
       'message_count': messageCount,
       'last_activity_at': lastActivityAt?.toIso8601String(),
@@ -159,18 +167,79 @@ class Room {
 
   int get participantCount => participants.length;
 
+  List<Participant> get permanentSpeakers => participants
+      .where((p) => p.tier == ParticipantTier.permanentSpeaker)
+      .toList();
+
+  List<Participant> get guestSpeakers => participants
+      .where((p) => p.tier == ParticipantTier.guestSpeaker)
+      .toList();
+
+  List<Participant> get members =>
+      participants.where((p) => p.tier == ParticipantTier.member).toList();
+
+  Participant? getParticipant(String userId) {
+    for (final p in participants) {
+      if (p.userId == userId) return p;
+    }
+    return null;
+  }
+
+  bool get hasPermanentSpeakerSlot => permanentSpeakers.length < 3;
+
   bool isCaptain(String userId) => captainId == userId;
 
-  bool isModerator(String userId) {
-    final participant = participants.firstWhere(
-      (p) => p.userId == userId,
-      orElse: () => Participant(
-        userId: '',
-        username: '',
-        tier: ParticipantTier.guest,
-        joinedAt: DateTime.now(),
-      ),
+  bool isPermanentSpeaker(String userId) => participants.any(
+      (p) => p.userId == userId && p.tier == ParticipantTier.permanentSpeaker);
+
+  bool isGuestSpeaker(String userId) => participants
+      .any((p) => p.userId == userId && p.tier == ParticipantTier.guestSpeaker);
+
+  bool isMember(String userId) => participants
+      .any((p) => p.userId == userId && p.tier == ParticipantTier.member);
+
+  Room promoteToPermanentSpeaker(String userId) {
+    if (!hasPermanentSpeakerSlot) return this;
+    return copyWith(
+      participants: participants.map((p) {
+        if (p.userId == userId) {
+          return p.copyWith(tier: ParticipantTier.permanentSpeaker);
+        }
+        return p;
+      }).toList(),
     );
-    return participant.tier == ParticipantTier.moderator;
+  }
+
+  Room demotePermanentSpeaker(String userId) {
+    return copyWith(
+      participants: participants.map((p) {
+        if (p.userId == userId && p.tier == ParticipantTier.permanentSpeaker) {
+          return p.copyWith(tier: ParticipantTier.member);
+        }
+        return p;
+      }).toList(),
+    );
+  }
+
+  Room addToGuestSpeakerQueue(String userId) {
+    return copyWith(
+      participants: participants.map((p) {
+        if (p.userId == userId) {
+          return p.copyWith(tier: ParticipantTier.guestSpeaker);
+        }
+        return p;
+      }).toList(),
+    );
+  }
+
+  Room removeFromGuestSpeakerQueue(String userId) {
+    return copyWith(
+      participants: participants.map((p) {
+        if (p.userId == userId && p.tier == ParticipantTier.guestSpeaker) {
+          return p.copyWith(tier: ParticipantTier.member);
+        }
+        return p;
+      }).toList(),
+    );
   }
 }

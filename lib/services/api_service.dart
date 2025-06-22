@@ -668,7 +668,6 @@ class ApiService {
     }
   }
 
-  // Get room by ID (dummy)
   Future<Map<String, dynamic>> getRoom(String roomId) async {
     try {
       // Generate some dummy rooms
@@ -692,7 +691,7 @@ class ApiService {
               userId: "user_2",
               username: "JaneDoe",
               profileImageUrl: "https://via.placeholder.com/150",
-              tier: ParticipantTier.moderator,
+              tier: ParticipantTier.permanentSpeaker, // FIXED HERE
               joinedAt: DateTime.parse("2025-05-01T11:00:00.000Z"),
             ),
             Participant(
@@ -727,7 +726,7 @@ class ApiService {
               userId: "user_4",
               username: "ChrisLee",
               profileImageUrl: "https://via.placeholder.com/150",
-              tier: ParticipantTier.member,
+              tier: ParticipantTier.guestSpeaker,
               joinedAt: DateTime.parse("2025-05-02T11:00:00.000Z"),
             ),
           ],

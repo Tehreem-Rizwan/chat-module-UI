@@ -14,11 +14,8 @@ class RoomProvider with ChangeNotifier {
   Room? _selectedRoom;
   List<Message> _messages = DummyData.messageList.toList();
   Map<String, bool> _typingUsers = {};
-  // bool _isLoading = false;
   bool _isLoading = true;
-  // bool _isJoining = false;
   bool _isJoining = true;
-  // bool _isConnected = false;
   bool _isConnected = true;
   String? _error;
 
@@ -86,15 +83,14 @@ class RoomProvider with ChangeNotifier {
         // Fallback to mock data for demo purposes
         setMockRoomsForEvent(eventId);
         notifyListeners();
-        return true; // Return true even if API fails so UI can show mock data
+        return true;
       }
     } catch (e) {
       _error = 'An unexpected error occurred: $e';
       _isLoading = false;
-      // Fallback to mock data for demo purposes
       setMockRoomsForEvent(eventId);
       notifyListeners();
-      return true; // Return true even if API fails so UI can show mock data
+      return true;
     }
   }
 
@@ -191,7 +187,6 @@ class RoomProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // First make API call to join
       final result = await _apiService.joinRoom(roomId);
 
       if (!result['success']) {
@@ -201,11 +196,9 @@ class RoomProvider with ChangeNotifier {
         return false;
       }
 
-      // Then connect to WebSocket
       final connected = await _webSocketService.connectToRoom(roomId, token);
 
       if (connected) {
-        // Load room messages
         await _loadRoomMessages(roomId);
         _isJoining = false;
         notifyListeners();
@@ -231,10 +224,7 @@ class RoomProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Disconnect from WebSocket first
       await _webSocketService.disconnect();
-
-      // Then make API call to leave
       final result = await _apiService.leaveRoom(roomId);
 
       _isLoading = false;
@@ -288,7 +278,6 @@ class RoomProvider with ChangeNotifier {
       notifyListeners();
       return;
     }
-
     _webSocketService.sendMessage(content);
   }
 
@@ -321,7 +310,6 @@ class RoomProvider with ChangeNotifier {
       final result = await _apiService.saveRoom(roomId);
 
       if (result['success']) {
-        // If the room is in the event rooms list, update it
         final index = _eventRooms.indexWhere((room) => room.id == roomId);
         if (index != -1) {
           final updatedRoom = await _apiService.getRoom(roomId);
@@ -329,15 +317,12 @@ class RoomProvider with ChangeNotifier {
             _eventRooms[index] = updatedRoom['room'];
           }
         }
-
-        // If it's the selected room, update it
         if (_selectedRoom?.id == roomId) {
           final updatedRoom = await _apiService.getRoom(roomId);
           if (updatedRoom['success']) {
             _selectedRoom = updatedRoom['room'];
           }
         }
-
         notifyListeners();
         return true;
       } else {
@@ -358,17 +343,14 @@ class RoomProvider with ChangeNotifier {
       final result = await _apiService.unsaveRoom(roomId);
 
       if (result['success']) {
-        // Remove from saved rooms if it exists
         _savedRooms.removeWhere((room) => room.id == roomId);
 
-        // If it's the selected room, update it
         if (_selectedRoom?.id == roomId) {
           final updatedRoom = await _apiService.getRoom(roomId);
           if (updatedRoom['success']) {
             _selectedRoom = updatedRoom['room'];
           }
         }
-
         notifyListeners();
         return true;
       } else {
@@ -431,7 +413,7 @@ class RoomProvider with ChangeNotifier {
             userId: 'user2',
             username: 'FanExpert',
             profileImageUrl: null,
-            tier: ParticipantTier.moderator,
+            tier: ParticipantTier.permanentSpeaker, // FIXED
             joinedAt: thirtyMinAgo,
           ),
           Participant(
@@ -466,7 +448,7 @@ class RoomProvider with ChangeNotifier {
             userId: 'user5',
             username: 'SuperFan',
             profileImageUrl: null,
-            tier: ParticipantTier.member,
+            tier: ParticipantTier.guestSpeaker, // FIXED, was member
             joinedAt: thirtyMinAgo,
           ),
         ],
@@ -494,7 +476,7 @@ class RoomProvider with ChangeNotifier {
             userId: 'user7',
             username: 'LoyalFan',
             profileImageUrl: null,
-            tier: ParticipantTier.moderator,
+            tier: ParticipantTier.permanentSpeaker, // FIXED
             joinedAt: thirtyMinAgo,
           ),
           Participant(
@@ -526,7 +508,7 @@ class RoomProvider with ChangeNotifier {
     _messages = [
       Message(
         id: '1',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'user1',
         senderUsername: 'SportsGuru',
         content:
@@ -537,7 +519,7 @@ class RoomProvider with ChangeNotifier {
       ),
       Message(
         id: '2',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'system',
         senderUsername: 'System',
         content: 'User FanExpert has joined the room.',
@@ -547,7 +529,7 @@ class RoomProvider with ChangeNotifier {
       ),
       Message(
         id: '3',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'user2',
         senderUsername: 'FanExpert',
         content: 'Thanks for having me! This game is going to be exciting.',
@@ -557,7 +539,7 @@ class RoomProvider with ChangeNotifier {
       ),
       Message(
         id: '4',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'system',
         senderUsername: 'System',
         content: 'User GameAnalyst has joined the room.',
@@ -567,7 +549,7 @@ class RoomProvider with ChangeNotifier {
       ),
       Message(
         id: '5',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'user3',
         senderUsername: 'GameAnalyst',
         content:
@@ -578,7 +560,7 @@ class RoomProvider with ChangeNotifier {
       ),
       Message(
         id: '6',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'user1',
         senderUsername: 'SportsGuru',
         content: 'Did you see that amazing play? What a start to the game!',
@@ -588,7 +570,7 @@ class RoomProvider with ChangeNotifier {
       ),
       Message(
         id: '7',
-        roomId: _selectedRoom!.id,
+        roomId: _selectedRoom?.id ?? '',
         senderId: 'user2',
         senderUsername: 'FanExpert',
         content: 'Absolutely incredible! That\'s why this team is my favorite.',

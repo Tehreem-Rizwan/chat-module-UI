@@ -854,17 +854,17 @@ class _ParticipantsBottomSheet extends StatelessWidget {
         tierLabel = 'Captain';
         tierColor = AppTheme.primaryColor;
         break;
-      case ParticipantTier.moderator:
-        tierLabel = 'Moderator';
+      case ParticipantTier.permanentSpeaker:
+        tierLabel = 'Permanent Speaker';
         tierColor = AppTheme.accentColor;
+        break;
+      case ParticipantTier.guestSpeaker:
+        tierLabel = 'Guest Speaker';
+        tierColor = Colors.grey;
         break;
       case ParticipantTier.member:
         tierLabel = 'Member';
         tierColor = Colors.green;
-        break;
-      case ParticipantTier.guest:
-        tierLabel = 'Guest';
-        tierColor = Colors.grey;
         break;
     }
 

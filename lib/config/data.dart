@@ -291,7 +291,7 @@ class DummyData {
           userId: "user_2",
           username: "JaneDoe",
           profileImageUrl: "https://via.placeholder.com/150",
-          tier: ParticipantTier.moderator,
+          tier: ParticipantTier.permanentSpeaker, // FIXED
           joinedAt: DateTime.parse("2025-05-11T10:00:00.000Z"),
         ),
         Participant(
@@ -354,7 +354,7 @@ class DummyData {
           userId: "user_7",
           username: "TennisExpert",
           profileImageUrl: "https://via.placeholder.com/150",
-          tier: ParticipantTier.moderator,
+          tier: ParticipantTier.guestSpeaker, // FIXED
           joinedAt: DateTime.parse("2025-05-12T11:00:00.000Z"),
         ),
         Participant(
